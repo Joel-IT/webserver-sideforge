@@ -10,5 +10,11 @@ bcrypt==4.1.2
 cryptography==42.0.2
 requests==2.31.0
 psutil==6.1.1
-pyinotify==0.9.6
 scapy==2.6.1
+flask-wtf==1.2.1
+flask-debugtoolbar==0.14.1
+email-validator==2.1.1
+
+# Planner Dependencies
+flask-wtf>=1.1.1
+email-validator>=2.0.0

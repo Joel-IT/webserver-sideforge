@@ -8,7 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_wtf import FlaskForm, CSRFProtect
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-from wtforms import StringField, PasswordField, SubmitField
+from wtforms import StringField, TextAreaField, SubmitField, SelectField, BooleanField, DateField, PasswordField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -20,7 +20,6 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import re
-import pwd
 from enum import Enum
 import traceback
 from PIL import Image, ImageDraw, ImageFont
@@ -116,7 +115,7 @@ app = Flask(__name__)
 
 # Configure app before Stripe initialization
 app.config['SECRET_KEY'] = secrets.token_hex(16)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////var/www/html/webserver-sideforge/sideforge.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.root_path, 'sideforge.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Ensure database directory and file have proper permissions
@@ -453,6 +452,8 @@ class User(db.Model, UserMixin):
     payments = db.relationship('Payment', backref='user', lazy='dynamic')
     payment_methods = db.relationship('PaymentMethod', back_populates='user', lazy='dynamic')
     cloud_storage = db.relationship('UserCloudStorage', back_populates='user')
+    planner_tasks_created = db.relationship('PlannerTask', foreign_keys='PlannerTask.creator_id', backref='task_creator')
+    planner_tasks_assigned = db.relationship('PlannerTask', foreign_keys='PlannerTask.assigned_to_id', backref='task_assignee')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -530,7 +531,7 @@ class PaymentMethod(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     card_type = db.Column(db.String(50), nullable=False)  # visa, mastercard, etc.
-    last_four = db.Column(db.String(4), nullable=False)
+    last4 = db.Column(db.String(4), nullable=False)  # Changed from last_four
     encrypted_card_number = db.Column(db.String(255), nullable=False)
     expiry_month = db.Column(db.Integer, nullable=False)
     expiry_year = db.Column(db.Integer, nullable=False)
@@ -558,7 +559,7 @@ class PaymentMethod(db.Model):
         payment_method = cls(
             user_id=user_id,
             card_type=card_type,
-            last_four=card_number[-4:],
+            last4=card_number[-4:],
             encrypted_card_number=encrypted_card_number,
             expiry_month=int(expiry_month),
             expiry_year=int(expiry_year),
@@ -722,6 +723,56 @@ class SharedFile(db.Model):
                 'details': str(e)
             }
 
+# Planner Models
+class PlannerBoard(db.Model):
+    __tablename__ = 'planner_boards'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_public = db.Column(db.Boolean, default=False)
+    
+    owner = db.relationship('User', backref='owned_boards')
+    lists = db.relationship('PlannerList', back_populates='board', cascade='all, delete-orphan')
+    board_members = db.relationship('BoardMember', back_populates='board', cascade='all, delete-orphan')
+
+class BoardMember(db.Model):
+    __tablename__ = 'board_members'
+    id = db.Column(db.Integer, primary_key=True)
+    board_id = db.Column(db.Integer, db.ForeignKey('planner_boards.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    role = db.Column(db.String(20), default='viewer')  # 'viewer', 'editor', 'admin'
+    
+    board = db.relationship('PlannerBoard', back_populates='board_members')
+    user = db.relationship('User', backref='board_memberships')
+
+class PlannerList(db.Model):
+    __tablename__ = 'planner_lists'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    board_id = db.Column(db.Integer, db.ForeignKey('planner_boards.id'), nullable=False)
+    order = db.Column(db.Integer, default=0)
+    
+    board = db.relationship('PlannerBoard', back_populates='lists')
+    tasks = db.relationship('PlannerTask', back_populates='list', cascade='all, delete-orphan')
+
+class PlannerTask(db.Model):
+    __tablename__ = 'planner_tasks'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    list_id = db.Column(db.Integer, db.ForeignKey('planner_lists.id'), nullable=False)
+    creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    assigned_to_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    due_date = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='todo')  # 'todo', 'in_progress', 'done'
+    
+    list = db.relationship('PlannerList', back_populates='tasks')
+    creator = db.relationship('User', foreign_keys=[creator_id])
+    assigned_to = db.relationship('User', foreign_keys=[assigned_to_id])
+
 # User Loader for Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
@@ -765,6 +816,40 @@ class RegistrationForm(FlaskForm):
         EqualTo('password', message='Passwords must match')
     ])
     submit = SubmitField('Register')
+
+# Planner Forms
+class BoardForm(FlaskForm):
+    title = StringField('Board Title', validators=[DataRequired(), Length(min=2, max=100)])
+    description = TextAreaField('Description', validators=[Length(max=500)])
+    is_public = BooleanField('Make Board Public')
+    submit = SubmitField('Create Board')
+
+class ListForm(FlaskForm):
+    title = StringField('List Title', validators=[DataRequired(), Length(min=2, max=100)])
+    submit = SubmitField('Create List')
+
+class TaskForm(FlaskForm):
+    title = StringField('Task Title', validators=[DataRequired(), Length(min=2, max=200)])
+    description = TextAreaField('Description', validators=[Length(max=500)])
+    list_id = SelectField('List', coerce=int, validators=[DataRequired()])
+    assigned_to = SelectField('Assign To', coerce=int, validators=[])
+    due_date = DateField('Due Date', format='%Y-%m-%d', validators=[])
+    status = SelectField('Status', choices=[
+        ('todo', 'To Do'), 
+        ('in_progress', 'In Progress'), 
+        ('done', 'Done')
+    ], validators=[DataRequired()])
+    submit = SubmitField('Create Task')
+
+# Board Invitation Form
+class BoardInviteForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    role = SelectField('Role', choices=[
+        ('viewer', 'Viewer'), 
+        ('editor', 'Editor'), 
+        ('admin', 'Admin')
+    ], validators=[DataRequired()])
+    submit = SubmitField('Send Invitation')
 
 # Routes
 @app.route('/')
@@ -986,11 +1071,18 @@ def dashboard():
         # Recent Cloud Files
         recent_cloud_files = UserCloudStorage.query.filter_by(user_id=current_user.id).order_by(UserCloudStorage.uploaded_at.desc()).limit(5).all()
         
+        # Planner Boards
+        boards = PlannerBoard.query.filter(
+            (PlannerBoard.owner_id == current_user.id) | 
+            (PlannerBoard.board_members.any(user_id=current_user.id))
+        ).limit(5).all()
+        
         return render_template('dashboard.html', 
                                storage_usage_percent=storage_usage_percent,
                                monthly_spending=monthly_spending,
                                active_files=active_files,
                                recent_cloud_files=recent_cloud_files,
+                               boards=boards,
                                current_time=datetime.now())
     except Exception as e:
         app.logger.error(f"Dashboard error for user {current_user.id}: {e}")
@@ -1527,15 +1619,9 @@ def get_user_storage_path(user_id):
         
         # Ensure correct ownership and permissions
         try:
-            # Try to set ownership to the user running the web server process
-            import pwd
-            
-            # Attempt to get the user running the web server (adjust as needed)
-            web_user = pwd.getpwnam('www-data')  # Common web server user
-            os.chown(user_storage_dir, web_user.pw_uid, web_user.pw_gid)
             os.chmod(user_storage_dir, 0o700)  # rwx------
             
-            app.logger.info(f"Set permissions for {user_storage_dir} to www-data")
+            app.logger.info(f"Set permissions for {user_storage_dir}")
         except Exception as ownership_error:
             app.logger.warning(f"Could not set directory ownership: {ownership_error}")
             # Fallback: ensure at least the base directory has correct permissions
@@ -1720,7 +1806,7 @@ def add_payment_method():
         new_method = PaymentMethod(
             user_id=current_user.id,
             card_type=card_type,
-            last_four=card_number[-4:],
+            last4=card_number[-4:],
             expiry_month=int(expiry_month),
             expiry_year=int(expiry_year),
             is_default=data.get('set_as_default', False)
@@ -1740,7 +1826,7 @@ def add_payment_method():
             'method': {
                 'id': new_method.id,
                 'card_type': new_method.card_type,
-                'last_four': new_method.last_four,
+                'last4': new_method.last4,
                 'is_default': new_method.is_default
             }
         }), 200
@@ -1884,7 +1970,7 @@ def create_payment_method():
             new_method = PaymentMethod(
                 user_id=current_user.id,
                 card_type=card_type,
-                last_four=card_number[-4:],
+                last4=card_number[-4:],
                 expiry_month=int(expiry_month),
                 expiry_year=int(expiry_year),
                 is_default=data.get('set_as_default', False)
@@ -2557,15 +2643,15 @@ def change_password():
 
         # Validate input
         if not current_password or not new_password or not confirm_password:
-            return jsonify({'error': 'All password fields are required'}), 400
-
+            return jsonify({'success': False, 'message': 'All password fields are required'}), 400
+        
         # Check if new passwords match
         if new_password != confirm_password:
-            return jsonify({'error': 'New passwords do not match'}), 400
+            return jsonify({'success': False, 'message': 'New passwords do not match'}), 400
 
         # Verify current password
         if not current_user.check_password(current_password):
-            return jsonify({'error': 'Current password is incorrect'}), 400
+            return jsonify({'success': False, 'message': 'Current password is incorrect'}), 400
 
         # Set new password
         current_user.set_password(new_password)
@@ -2578,7 +2664,7 @@ def change_password():
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Password change error for user {current_user.id}: {str(e)}")
-        return jsonify({'error': 'Could not change password'}), 500
+        return jsonify({'success': False, 'message': 'Could not change password'}), 500
 
 @app.route('/account/update-preferences', methods=['POST'])
 @login_required
@@ -2612,7 +2698,7 @@ def update_preferences():
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Preferences update error for user {current_user.id}: {str(e)}")
-        return jsonify({'error': 'Could not update preferences'}), 500
+        return jsonify({'success': False, 'message': 'Could not update preferences'}), 500
 
 @app.route('/account/toggle-2fa', methods=['POST'])
 @login_required
@@ -2634,7 +2720,7 @@ def toggle_two_factor():
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"2FA toggle error for user {current_user.id}: {str(e)}")
-        return jsonify({'error': 'Could not toggle two-factor authentication'}), 500
+        return jsonify({'success': False, 'message': 'Could not toggle two-factor authentication'}), 500
 
 @app.route('/account/delete', methods=['POST'])
 @login_required
@@ -2662,7 +2748,7 @@ def delete_account():
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Account deletion error for user {user_id}: {str(e)}")
-        return jsonify({'error': 'Could not delete account'}), 500
+        return jsonify({'success': False, 'message': 'Could not delete account'}), 500
 
 @app.route('/security-settings', methods=['GET'])
 @login_required
@@ -2799,6 +2885,207 @@ def debug_user_files():
             'error': 'Failed to retrieve file information',
             'details': str(e)
         }), 500
+
+# Planner Routes
+@app.route('/planner')
+@login_required
+def planner_home():
+    # Get boards where user is owner or member
+    owned_boards = PlannerBoard.query.filter_by(owner_id=current_user.id).all()
+    member_boards = [bm.board for bm in current_user.board_memberships]
+    
+    return render_template('planner/home.html', 
+                           owned_boards=owned_boards, 
+                           member_boards=member_boards)
+
+@app.route('/planner/board/create', methods=['GET', 'POST'])
+@login_required
+def create_board():
+    form = BoardForm()
+    if form.validate_on_submit():
+        new_board = PlannerBoard(
+            title=form.title.data,
+            description=form.description.data,
+            owner_id=current_user.id,
+            is_public=form.is_public.data
+        )
+        db.session.add(new_board)
+        
+        # Add board creator as admin member
+        board_member = BoardMember(
+            board=new_board, 
+            user=current_user, 
+            role='admin'
+        )
+        db.session.add(board_member)
+        
+        db.session.commit()
+        flash('Board created successfully!', 'success')
+        return redirect(url_for('planner_board', board_id=new_board.id))
+    
+    return render_template('planner/create_board.html', form=form)
+
+@app.route('/planner/board/<int:board_id>')
+@login_required
+def planner_board(board_id):
+    board = PlannerBoard.query.get_or_404(board_id)
+    
+    # Check if user is a board member or owner
+    is_member = BoardMember.query.filter_by(
+        board_id=board_id, 
+        user_id=current_user.id
+    ).first()
+    
+    if not is_member and not board.is_public and board.owner_id != current_user.id:
+        flash('You do not have access to this board.', 'danger')
+        return redirect(url_for('planner_home'))
+    
+    list_form = ListForm()
+    task_form = TaskForm()
+    
+    # Populate list of users for task assignment
+    board_members = [bm.user for bm in board.board_members]
+    task_form.assigned_to.choices = [(0, 'Unassigned')] + [(user.id, user.name) for user in board_members]
+    task_form.list_id.choices = [(lst.id, lst.title) for lst in board.lists]
+    
+    return render_template('planner/board.html', 
+                           board=board, 
+                           list_form=list_form, 
+                           task_form=task_form)
+
+@app.route('/planner/board/<int:board_id>/list/create', methods=['POST'])
+@login_required
+def create_list(board_id):
+    form = ListForm()
+    board = PlannerBoard.query.get_or_404(board_id)
+    
+    # Check permissions
+    is_member = BoardMember.query.filter_by(
+        board_id=board_id, 
+        user_id=current_user.id, 
+        role__in=['editor', 'admin']
+    ).first()
+    
+    if not is_member and board.owner_id != current_user.id:
+        flash('You do not have permission to create lists.', 'danger')
+        return redirect(url_for('planner_board', board_id=board_id))
+    
+    if form.validate_on_submit():
+        new_list = PlannerList(
+            title=form.title.data,
+            board_id=board_id,
+            order=len(board.lists)
+        )
+        db.session.add(new_list)
+        db.session.commit()
+        flash('List created successfully!', 'success')
+    
+    return redirect(url_for('planner_board', board_id=board_id))
+
+@app.route('/planner/board/<int:board_id>/task/create', methods=['POST'])
+@login_required
+def create_task(board_id):
+    form = TaskForm()
+    board = PlannerBoard.query.get_or_404(board_id)
+    
+    # Check permissions
+    is_member = BoardMember.query.filter_by(
+        board_id=board_id, 
+        user_id=current_user.id, 
+        role__in=['editor', 'admin']
+    ).first()
+    
+    if not is_member and board.owner_id != current_user.id:
+        flash('You do not have permission to create tasks.', 'danger')
+        return redirect(url_for('planner_board', board_id=board_id))
+    
+    form.list_id.choices = [(lst.id, lst.title) for lst in board.lists]
+    board_members = [bm.user for bm in board.board_members]
+    form.assigned_to.choices = [(0, 'Unassigned')] + [(user.id, user.name) for user in board_members]
+    
+    if form.validate_on_submit():
+        assigned_to_id = form.assigned_to.data if form.assigned_to.data != 0 else None
+        
+        new_task = PlannerTask(
+            title=form.title.data,
+            description=form.description.data,
+            list_id=form.list_id.data,
+            creator_id=current_user.id,
+            assigned_to_id=assigned_to_id,
+            due_date=form.due_date.data,
+            status=form.status.data
+        )
+        db.session.add(new_task)
+        db.session.commit()
+        flash('Task created successfully!', 'success')
+    
+    return redirect(url_for('planner_board', board_id=board_id))
+
+@app.route('/planner/board/<int:board_id>/invite', methods=['GET', 'POST'])
+@login_required
+def invite_to_board(board_id):
+    board = PlannerBoard.query.get_or_404(board_id)
+    form = BoardInviteForm()
+    
+    # Check if current user is owner or admin
+    is_admin = (board.owner_id == current_user.id or 
+                BoardMember.query.filter_by(
+                    board_id=board_id, 
+                    user_id=current_user.id, 
+                    role='admin'
+                ).first() is not None)
+    
+    if not is_admin:
+        flash('You do not have permission to invite members.', 'danger')
+        return redirect(url_for('planner_board', board_id=board_id))
+    
+    # Get current board members for display
+    board_members = BoardMember.query.filter_by(board_id=board_id).all()
+    
+    if form.validate_on_submit():
+        email = form.email.data.strip()
+        role = form.role.data
+        
+        # Find user by email
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            # Check if user is already a member
+            existing_member = BoardMember.query.filter_by(
+                board_id=board_id, 
+                user_id=user.id
+            ).first()
+            
+            if existing_member:
+                flash(f'{user.name} is already a member of this board.', 'warning')
+            else:
+                # Add user as board member
+                board_member = BoardMember(
+                    board_id=board_id, 
+                    user_id=user.id, 
+                    role=role
+                )
+                db.session.add(board_member)
+                
+                try:
+                    db.session.commit()
+                    
+                    # Send invitation notification (implement email sending logic)
+                    send_board_invitation_email(user.email, board.title, current_user.name)
+                    
+                    flash(f'{user.name} has been invited to the board with {role} access.', 'success')
+                except Exception as e:
+                    db.session.rollback()
+                    app.logger.error(f"Error inviting user to board: {str(e)}")
+                    flash('An error occurred while inviting the user.', 'danger')
+        else:
+            flash('No user found with that email address.', 'danger')
+    
+    return render_template('planner/invite.html', board=board, board_members=board_members, form=form)
+
+def send_board_invitation_email(recipient_email, board_title, inviter_name):
+    # Implement email sending logic
+    pass
 
 # Add these to your database initialization or migration script
 if __name__ == '__main__':

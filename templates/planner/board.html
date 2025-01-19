@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}{{ board.title }} - Planner{% endblock %}
+
+{% block content %}
+<div class="container-fluid planner-board">
+    <div class="row">
+        <div class="col-12">
+            <div class="board-header d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>{{ board.title }}</h1>
+                    <p class="text-muted">{{ board.description }}</p>
+                </div>
+                <div class="board-actions">
+                    <a href="{{ url_for('invite_to_board', board_id=board.id) }}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-user-plus"></i> Invite
+                    </a>
+                    {% if board.owner_id == current_user.id %}
+                        <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#boardSettingsModal">
+                            <i class="fas fa-cog"></i> Settings
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="board-content">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="board-lists d-flex overflow-auto">
+                            {% for list in board.lists %}
+                                <div class="list-container me-3" style="min-width: 300px;">
+                                    <div class="card list-card">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">{{ list.title }}</h5>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="#">Rename</a></li>
+                                                    <li><a class="dropdown-item" href="#">Delete</a></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            {% for task in list.tasks %}
+                                                <div class="card task-card mb-2">
+                                                    <div class="card-body">
+                                                        <h6 class="card-title">{{ task.title }}</h6>
+                                                        {% if task.description %}
+                                                            <p class="card-text text-muted small">
+                                                                {{ task.description[:100] }}{% if task.description|length > 100 %}...{% endif %}
+                                                            </p>
+                                                        {% endif %}
+                                                        <div class="task-footer d-flex justify-content-between align-items-center">
+                                                            <span class="badge {% if task.status == 'todo' %}bg-secondary{% elif task.status == 'in_progress' %}bg-warning{% else %}bg-success{% endif %}">
+                                                                {{ task.status.replace('_', ' ').title() }}
+                                                            </span>
+                                                            {% if task.assigned_to %}
+                                                                <span class="small text-muted">
+                                                                    Assigned to {{ task.assigned_to.name }}
+                                                                </span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                            <button class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#createTaskModal" data-list-id="{{ list.id }}">
+                                                <i class="fas fa-plus"></i> Add Task
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            
+                            <div class="list-container" style="min-width: 300px;">
+                                <button class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#createListModal">
+                                    <i class="fas fa-plus"></i> Add List
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create List Modal -->
+    <div class="modal fade" id="createListModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New List</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('create_list', board_id=board.id) }}">
+                    {{ list_form.hidden_tag() }}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            {{ list_form.title.label(class="form-label") }}
+                            {{ list_form.title(class="form-control", placeholder="Enter list title") }}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        {{ list_form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Task Modal -->
+    <div class="modal fade" id="createTaskModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('create_task', board_id=board.id) }}">
+                    {{ task_form.hidden_tag() }}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            {{ task_form.title.label(class="form-label") }}
+                            {{ task_form.title(class="form-control", placeholder="Enter task title") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ task_form.description.label(class="form-label") }}
+                            {{ task_form.description(class="form-control", placeholder="Optional task description", rows=3) }}
+                        </div>
+                        <div class="mb-3">
+                            {{ task_form.list_id.label(class="form-label") }}
+                            {{ task_form.list_id(class="form-control") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ task_form.assigned_to.label(class="form-label") }}
+                            {{ task_form.assigned_to(class="form-control") }}
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ task_form.due_date.label(class="form-label") }}
+                                {{ task_form.due_date(class="form-control", type="date") }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ task_form.status.label(class="form-label") }}
+                                {{ task_form.status(class="form-control") }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        {{ task_form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.board-lists {
+    overflow-x: auto;
+    padding-bottom: 15px;
+}
+.list-container {
+    flex: 0 0 auto;
+}
+.list-card {
+    height: 100%;
+}
+.task-card {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.task-card:hover {
+    transform: scale(1.02);
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var createTaskModal = document.getElementById('createTaskModal');
+    createTaskModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var listId = button.getAttribute('data-list-id');
+        var listSelect = createTaskModal.querySelector('#list_id');
+        listSelect.value = listId;
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Create Planner Board{% endblock %}
+
+{% block content %}
+<div class="container create-board-container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title text-center">Create New Planner Board</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('create_board') }}">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ form.title.label(class="form-label") }}
+                            {{ form.title(class="form-control", placeholder="Enter board title") }}
+                            {% if form.title.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.title.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control", placeholder="Optional board description", rows=3) }}
+                            {% if form.description.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.description.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.is_public(class="form-check-input") }}
+                            {{ form.is_public.label(class="form-check-label") }}
+                            <small class="form-text text-muted d-block">
+                                Public boards can be viewed by anyone in your organization
+                            </small>
+                        </div>
+                        
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.create-board-container {
+    margin-top: 50px;
+}
+</style>
+{% endblock %}

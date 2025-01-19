@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}My Planner{% endblock %}
+
+{% block content %}
+<div class="container planner-home">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">My Planner</h1>
+            
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Owned Boards</h5>
+                    <a href="{{ url_for('create_board') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> Create New Board
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if owned_boards %}
+                        <div class="row">
+                            {% for board in owned_boards %}
+                                <div class="col-md-4 mb-3">
+                                    <div class="card board-card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ board.title }}</h6>
+                                            <p class="card-text text-muted">
+                                                {{ board.description[:100] }}{% if board.description|length > 100 %}...{% endif %}
+                                            </p>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <a href="{{ url_for('planner_board', board_id=board.id) }}" class="btn btn-outline-primary btn-sm">
+                                                    View Board
+                                                </a>
+                                                {% if board.is_public %}
+                                                    <span class="badge bg-success">Public</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Private</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info text-center">
+                            You haven't created any boards yet. 
+                            <a href="{{ url_for('create_board') }}" class="alert-link">Create your first board</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Boards I'm a Member Of</h5>
+                </div>
+                <div class="card-body">
+                    {% if member_boards %}
+                        <div class="row">
+                            {% for board in member_boards %}
+                                <div class="col-md-4 mb-3">
+                                    <div class="card board-card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ board.title }}</h6>
+                                            <p class="card-text text-muted">
+                                                Owned by {{ board.owner.name }}
+                                            </p>
+                                            <a href="{{ url_for('planner_board', board_id=board.id) }}" class="btn btn-outline-primary btn-sm">
+                                                View Board
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info text-center">
+                            You are not a member of any boards yet.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.board-card {
+    transition: transform 0.3s;
+}
+.board-card:hover {
+    transform: scale(1.05);
+}
+</style>
+{% endblock %}
