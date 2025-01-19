@@ -2342,9 +2342,7 @@ def search_users_for_sharing():
 @app.route('/cloud/files/<int:file_id>/share', methods=['POST'])
 @login_required
 def share_cloud_file(file_id):
-    """
-    Share a cloud file with selected users.
-    """
+    """Share a cloud file with selected users."""
     # Ensure request is JSON
     if not request.is_json:
         return jsonify({'error': 'Request must be JSON'}), 400
@@ -2941,7 +2939,7 @@ def create_board():
 def planner_board(board_id):
     board = PlannerBoard.query.get_or_404(board_id)
     
-    # Check if user is a board member or owner
+    # Check board access permissions
     is_member = BoardMember.query.filter(
         BoardMember.board_id == board_id, 
         BoardMember.user_id == current_user.id
@@ -3371,70 +3369,12 @@ def configure_logging(app):
 # Call logging configuration
 configure_logging(app)
 
-@app.route('/planner/board/<int:board_id>')
+@app.route('/planner/board/<int:board_id>/task/delete', methods=['POST'])
 @login_required
-def planner_board(board_id):
-    board = PlannerBoard.query.get_or_404(board_id)
-    
-    # Check board access permissions
-    is_member = BoardMember.query.filter(
-        BoardMember.board_id == board_id, 
-        BoardMember.user_id == current_user.id
-    ).first()
-    
-    if not is_member and not board.is_public and board.owner_id != current_user.id:
-        flash('You do not have access to this board.', 'danger')
-        return redirect(url_for('planner_home'))
-    
-    # Determine user's role
-    user_role = 'viewer'
-    if board.owner_id == current_user.id:
-        user_role = 'owner'
-    elif is_member:
-        user_role = is_member.role
-    
-    # Prepare forms
-    task_form = TaskForm()
-    board_lists = board.lists
-    task_form.list_id.choices = [(lst.id, lst.title) for lst in board_lists]
-    
-    # If there are lists, pre-select the first list
-    if board_lists:
-        task_form.list_id.data = board_lists[0].id
-    
-    board_members = [bm.user for bm in board.board_members]
-    task_form.assigned_to.choices = [(0, 'Unassigned')] + [(user.id, user.name) for user in board_members]
-    
-    invite_form = BoardInviteForm()
-    
-    # Delete task form
-    delete_task_form = DeleteForm()
-    
-    # Delete board form
-    delete_board_form = DeleteForm()
-    
-    # Update board form
-    update_board_form = BoardForm()
-    update_board_form.title.data = board.title
-    update_board_form.description.data = board.description
-    update_board_form.is_public.data = board.is_public
-    
-    return render_template(
-        'planner/board.html', 
-        board=board, 
-        task_form=task_form, 
-        invite_form=invite_form,
-        delete_task_form=delete_task_form,
-        delete_board_form=delete_board_form,
-        update_board_form=update_board_form,
-        is_admin=(user_role in ['owner', 'admin']),
-        user_role=user_role
-    )
-
-@app.route('/planner/board/<int:board_id>/create_task', methods=['POST'])
-@login_required
-def create_task(board_id):
-    board = PlannerBoard.query.get_or_404(board_id)
+def delete_task(board_id):
+    task_id = request.form.get('task_id')
+    task = PlannerTask.query.get_or_404(task_id)
+    board = task.list.board
     
     # Check permissions
     is_member = BoardMember.query.filter(
@@ -3444,143 +3384,17 @@ def create_task(board_id):
     ).first()
     
     if not is_member and board.owner_id != current_user.id:
-        flash('You do not have permission to create tasks.', 'danger')
-        return redirect(url_for('planner_board', board_id=board_id))
-    
-    form = TaskForm()
-    form.list_id.choices = [(lst.id, lst.title) for lst in board.lists]
-    board_members = [bm.user for bm in board.board_members]
-    form.assigned_to.choices = [(0, 'Unassigned')] + [(user.id, user.name) for user in board_members]
-    
-    if form.validate_on_submit():
-        # Validate that the selected list belongs to this board
-        selected_list = PlannerList.query.get(form.list_id.data)
-        if not selected_list or selected_list.board_id != board_id:
-            flash('Invalid list selected.', 'danger')
-            return redirect(url_for('planner_board', board_id=board_id))
-        
-        # Create new task
-        new_task = PlannerTask(
-            title=form.title.data,
-            description=form.description.data,
-            list_id=form.list_id.data,
-            creator_id=current_user.id,
-            assigned_to_id=form.assigned_to.data if form.assigned_to.data != 0 else None,
-            due_date=form.due_date.data,
-            status=form.status.data,
-            priority=form.priority.data
-        )
-        
-        db.session.add(new_task)
-        db.session.commit()
-        
-        flash('Task created successfully!', 'success')
-        return redirect(url_for('planner_board', board_id=board_id))
-    
-    # If form validation fails, show errors
-    for field, errors in form.errors.items():
-        for error in errors:
-            flash(f"{getattr(form, field).label.text}: {error}", 'danger')
-    
-    return redirect(url_for('planner_board', board_id=board_id))
-
-@app.route('/planner/board/delete', methods=['POST'])
-@login_required
-def delete_board():
-    board_id = request.form.get('board_id')
-    board = PlannerBoard.query.get_or_404(board_id)
-    
-    # Check if current user is the owner
-    if board.owner_id != current_user.id:
-        flash('Only the board owner can delete the board.', 'danger')
+        flash('You do not have permission to delete tasks.', 'danger')
         return redirect(url_for('planner_board', board_id=board_id))
     
     try:
-        # Delete all associated tasks
-        for list_item in board.lists:
-            PlannerTask.query.filter_by(list_id=list_item.id).delete()
-        
-        # Delete all lists
-        PlannerList.query.filter_by(board_id=board_id).delete()
-        
-        # Delete board members
-        BoardMember.query.filter_by(board_id=board_id).delete()
-        
-        # Delete the board itself
-        db.session.delete(board)
+        db.session.delete(task)
         db.session.commit()
         
-        flash('Board deleted successfully!', 'success')
-        return redirect(url_for('planner_home'))
-    
+        flash('Task deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Error deleting board: {str(e)}")
-        flash('An error occurred while deleting the board.', 'danger')
-        return redirect(url_for('planner_board', board_id=board_id))
-
-@app.route('/planner/board/update', methods=['POST'])
-@login_required
-def update_board():
-    board_id = request.form.get('board_id')
-    board = PlannerBoard.query.get_or_404(board_id)
-    
-    # Check if current user is the owner or an admin
-    if board.owner_id != current_user.id:
-        is_admin = BoardMember.query.filter(
-            BoardMember.board_id == board_id, 
-            BoardMember.user_id == current_user.id, 
-            BoardMember.role == 'admin'
-        ).first()
-        
-        if not is_admin:
-            flash('You do not have permission to modify board settings.', 'danger')
-            return redirect(url_for('planner_board', board_id=board_id))
-    
-    form = BoardForm()
-    
-    if form.validate_on_submit():
-        board.title = form.title.data
-        board.description = form.description.data
-        
-        db.session.commit()
-        flash('Board updated successfully!', 'success')
-    else:
-        for field, errors in form.errors.items():
-            for error in errors:
-                flash(f"{getattr(form, field).label.text}: {error}", 'danger')
-    
-    return redirect(url_for('planner_board', board_id=board_id))
-
-@app.route('/planner/board/<int:board_id>/update', methods=['POST'])
-@login_required
-def update_board(board_id):
-    board = PlannerBoard.query.get_or_404(board_id)
-    
-    # Check if current user is the owner or an admin
-    if board.owner_id != current_user.id:
-        is_admin = BoardMember.query.filter(
-            BoardMember.board_id == board_id, 
-            BoardMember.user_id == current_user.id, 
-            BoardMember.role == 'admin'
-        ).first()
-        
-        if not is_admin:
-            flash('You do not have permission to modify board settings.', 'danger')
-            return redirect(url_for('planner_board', board_id=board_id))
-    
-    form = BoardForm()
-    
-    if form.validate_on_submit():
-        board.title = form.title.data
-        board.description = form.description.data
-        board.is_public = form.is_public.data
-        
-        db.session.commit()
-        flash('Board updated successfully!', 'success')
-    else:
-        for field, errors in form.errors.items():
-            for error in errors:
-                flash(f"{getattr(form, field).label.text}: {error}", 'danger')
+        app.logger.error(f"Error deleting task: {str(e)}")
+        flash('An error occurred while deleting the task.', 'danger')
     
     return redirect(url_for('planner_board', board_id=board_id))

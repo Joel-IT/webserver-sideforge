@@ -200,11 +200,11 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 {% if delete_task_form %}
-                <form method="POST" action="{{ url_for('delete_task') }}">
+                <form method="POST" action="{{ url_for('delete_task', board_id=board.id) }}">
                     {{ delete_task_form.hidden_tag() }}
                     <div class="modal-body">
                         <p>Are you sure you want to delete this task?</p>
-                        <input type="hidden" name="task_id" id="task-id">
+                        <input type="hidden" name="task_id" id="deleteTaskId" value="">
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
     deleteTaskModal.addEventListener('show.bs.modal', function (event) {
         var button = event.relatedTarget;
         var taskId = button.getAttribute('data-task-id');
-        var taskIdInput = deleteTaskModal.querySelector('#task-id');
+        var taskIdInput = deleteTaskModal.querySelector('#deleteTaskId');
         taskIdInput.value = taskId;
     });
 });
