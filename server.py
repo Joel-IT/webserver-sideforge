@@ -10,6 +10,7 @@ from flask_wtf import FlaskForm, CSRFProtect
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from wtforms import StringField, TextAreaField, SubmitField, SelectField, BooleanField, DateField, PasswordField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
+from flask_wtf.file import FileField, FileRequired, FileAllowed
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from flask_debugtoolbar import DebugToolbarExtension
@@ -452,8 +453,14 @@ class User(db.Model, UserMixin):
     payments = db.relationship('Payment', backref='user', lazy='dynamic')
     payment_methods = db.relationship('PaymentMethod', back_populates='user', lazy='dynamic')
     cloud_storage = db.relationship('UserCloudStorage', back_populates='user')
-    planner_tasks_created = db.relationship('PlannerTask', foreign_keys='PlannerTask.creator_id', backref='task_creator')
-    planner_tasks_assigned = db.relationship('PlannerTask', foreign_keys='PlannerTask.assigned_to_id', backref='task_assignee')
+    planner_tasks_created = db.relationship('PlannerTask', 
+                                            foreign_keys='PlannerTask.creator_id', 
+                                            back_populates='creator', 
+                                            overlaps="task_creator")
+    planner_tasks_assigned = db.relationship('PlannerTask', 
+                                             foreign_keys='PlannerTask.assigned_to_id', 
+                                             back_populates='assigned_to', 
+                                             overlaps="task_assignee")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -767,11 +774,11 @@ class PlannerTask(db.Model):
     assigned_to_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     due_date = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), default='todo')  # 'todo', 'in_progress', 'done'
+    status = db.Column(db.String(20), default='todo')
     
     list = db.relationship('PlannerList', back_populates='tasks')
-    creator = db.relationship('User', foreign_keys=[creator_id])
-    assigned_to = db.relationship('User', foreign_keys=[assigned_to_id])
+    creator = db.relationship('User', foreign_keys=[creator_id], back_populates='planner_tasks_created', overlaps="task_creator")
+    assigned_to = db.relationship('User', foreign_keys=[assigned_to_id], back_populates='planner_tasks_assigned', overlaps="task_assignee")
 
 # User Loader for Flask-Login
 @login_manager.user_loader
@@ -1635,59 +1642,45 @@ def get_user_storage_path(user_id):
 @app.route('/cloud/upload', methods=['POST'])
 @login_required
 def upload_file():
-    # Log request details for debugging
-    app.logger.info(f"Upload request headers: {request.headers}")
-    app.logger.info(f"Request content type: {request.content_type}")
-    app.logger.info(f"Request method: {request.method}")
-    app.logger.info(f"Request data: {request.data}")
-    app.logger.info(f"Request form: {request.form}")
-    app.logger.info(f"Request files: {request.files}")
-    
-    # Logging for debugging
-    app.logger.info(f"Upload attempt by user {current_user.id}")
+    # Comprehensive logging
+    app.logger.info(f"Upload request from user {current_user.id}")
     app.logger.info(f"Request method: {request.method}")
     app.logger.info(f"Request content type: {request.content_type}")
     
-    # Log all incoming files and their details
-    app.logger.info(f"Incoming files: {request.files}")
-    app.logger.info(f"Incoming form data: {request.form}")
-
-    # Check if file is present
+    # Check if files are present
     if 'file' not in request.files:
-        app.logger.warning(f"No file in request by user {current_user.id}")
-        return jsonify({'error': 'Keine Datei ausgewählt'}), 400
+        app.logger.warning(f"No file in upload request by user {current_user.id}")
+        return jsonify({
+            'error': 'Keine Datei ausgewählt', 
+            'details': 'No file found in the request'
+        }), 400
     
     file = request.files['file']
     
-    # Log file details
-    app.logger.info(f"File details: name={file.filename}, content_type={file.content_type}")
-    
-    # Check if filename is empty
-    if file.filename == '':
+    # Validate file
+    if not file or file.filename == '':
         app.logger.warning(f"Empty filename for upload by user {current_user.id}")
-        return jsonify({'error': 'Keine Datei ausgewählt'}), 400
-
-    # Validate file size
-    MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024  # 5 GB
+        return jsonify({
+            'error': 'Keine Datei ausgewählt', 
+            'details': 'Empty filename or no file selected'
+        }), 400
     
-    # Get file size
+    # File size validation
+    MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024  # 5 GB
     file.seek(0, os.SEEK_END)
     file_size = file.tell()
     file.seek(0)
     
-    app.logger.info(f"File size: {file_size} bytes")
+    app.logger.info(f"File details: name={file.filename}, size={file_size} bytes")
     
-    # Check file size
     if file_size > MAX_FILE_SIZE:
         app.logger.warning(f"File too large: {file_size} bytes by user {current_user.id}")
         return jsonify({
             'error': f'Datei zu groß. Maximale Dateigröße: 5 GB (Ihre Datei: {file_size / (1024 * 1024):.2f} MB)'
         }), 400
 
-    # Check user's total storage
+    # Storage limit check
     total_storage = db.session.query(func.sum(UserCloudStorage.file_size)).filter_by(user_id=current_user.id).scalar() or 0
-    
-    app.logger.info(f"Current user storage: {total_storage} bytes")
     
     if total_storage + file_size > MAX_FILE_SIZE:
         app.logger.warning(f"Storage limit exceeded for user {current_user.id}")
@@ -1695,16 +1688,15 @@ def upload_file():
             'error': 'Speicherlimit überschritten. Bitte löschen Sie einige Dateien.'
         }), 400
     
-    # Generate unique filename
-    unique_filename = f"{secure_filename(file.filename)}"
+    # Prepare file storage
+    unique_filename = secure_filename(file.filename)
     user_storage_path = get_user_storage_path(current_user.id)
     file_path = os.path.join(user_storage_path, unique_filename)
     
     try:
         # Save file
+        os.makedirs(user_storage_path, exist_ok=True)
         file.save(file_path)
-        
-        app.logger.info(f"File saved: {file_path}")
         
         # Create database record
         cloud_file = UserCloudStorage(
@@ -1718,7 +1710,7 @@ def upload_file():
         db.session.add(cloud_file)
         db.session.commit()
         
-        app.logger.info(f"File record created for user {current_user.id}")
+        app.logger.info(f"File uploaded successfully by user {current_user.id}")
         
         return jsonify({
             'id': cloud_file.id,
@@ -1727,18 +1719,17 @@ def upload_file():
         }), 200
     
     except Exception as e:
-        # Rollback database transaction
+        # Cleanup and error handling
         db.session.rollback()
         
-        # Remove partially uploaded file if it exists
         if os.path.exists(file_path):
             os.remove(file_path)
         
-        # Log the error
-        app.logger.error(f"File upload error for user {current_user.id}: {str(e)}")
+        app.logger.error(f"File upload error: {str(e)}", exc_info=True)
         
         return jsonify({
-            'error': 'Fehler beim Datei-Upload. Bitte versuchen Sie es erneut.'
+            'error': 'Fehler beim Datei-Upload. Bitte versuchen Sie es erneut.',
+            'details': str(e)
         }), 500
 
 @app.route('/cloud/files', methods=['GET'])
