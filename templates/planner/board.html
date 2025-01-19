@@ -52,6 +52,7 @@
                                                         <h6 class="task-title mb-1">{{ task.title }}</h6>
                                                         <div class="task-actions">
                                                             <form action="{{ url_for('toggle_task_status', task_id=task.id) }}" method="POST" class="d-inline">
+                                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                                 <button type="submit" class="btn btn-sm {% if task.status == 'done' %}btn-success{% else %}btn-outline-secondary{% endif %}" title="Toggle Task Status">
                                                                     <i class="fas {% if task.status == 'done' %}fa-check-circle{% else %}fa-circle{% endif %}"></i>
                                                                 </button>

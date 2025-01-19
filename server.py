@@ -3140,29 +3140,52 @@ def send_board_invitation_email(recipient_email, board_title, inviter_name):
 @app.route('/planner/task/<int:task_id>/toggle_status', methods=['POST'])
 @login_required
 def toggle_task_status(task_id):
-    task = PlannerTask.query.get_or_404(task_id)
-    board = task.list.board
-    
-    # Check permissions
-    is_member = BoardMember.query.filter(
-        BoardMember.board_id == board.id, 
-        BoardMember.user_id == current_user.id, 
-        BoardMember.role.in_(['editor', 'admin'])
-    ).first()
-    
-    if not is_member and board.owner_id != current_user.id:
-        flash('You do not have permission to modify tasks.', 'danger')
+    try:
+        # Log the incoming request details
+        app.logger.info(f"Toggle task status request received for task_id: {task_id}")
+        app.logger.info(f"Current user: {current_user.id}")
+        
+        task = PlannerTask.query.get_or_404(task_id)
+        board = task.list.board
+        
+        # Log board and task details
+        app.logger.info(f"Board ID: {board.id}")
+        app.logger.info(f"Current task status: {task.status}")
+        
+        # Check permissions
+        is_member = BoardMember.query.filter(
+            BoardMember.board_id == board.id, 
+            BoardMember.user_id == current_user.id, 
+            BoardMember.role.in_(['editor', 'admin'])
+        ).first()
+        
+        # Log permission check
+        app.logger.info(f"Is member: {is_member is not None}")
+        app.logger.info(f"Board owner ID: {board.owner_id}")
+        
+        if not is_member and board.owner_id != current_user.id:
+            app.logger.warning(f"Unauthorized task status toggle attempt by user {current_user.id}")
+            flash('You do not have permission to modify tasks.', 'danger')
+            return redirect(url_for('planner_board', board_id=board.id))
+        
+        # Toggle task status
+        if task.status == 'done':
+            task.mark_incomplete()
+            app.logger.info(f"Marking task {task_id} as incomplete")
+        else:
+            task.mark_complete()
+            app.logger.info(f"Marking task {task_id} as complete")
+        
+        db.session.commit()
+        app.logger.info(f"Task {task_id} status updated successfully")
+        flash('Task status updated successfully!', 'success')
         return redirect(url_for('planner_board', board_id=board.id))
     
-    # Toggle task status
-    if task.status == 'done':
-        task.mark_incomplete()
-    else:
-        task.mark_complete()
-    
-    db.session.commit()
-    flash('Task status updated successfully!', 'success')
-    return redirect(url_for('planner_board', board_id=board.id))
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error toggling task status: {str(e)}", exc_info=True)
+        flash('An error occurred while updating task status.', 'danger')
+        return redirect(url_for('planner_home'))
 
 @app.route('/planner/task/<int:task_id>/edit', methods=['GET', 'POST'])
 @login_required
