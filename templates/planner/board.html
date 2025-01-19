@@ -115,9 +115,16 @@
                 <form method="POST" action="{{ url_for('create_list', board_id=board.id) }}">
                     {{ list_form.hidden_tag() }}
                     <div class="modal-body">
-                        <div class="mb-3">
+                        <div class="form-group mb-3">
                             {{ list_form.title.label(class="form-label") }}
                             {{ list_form.title(class="form-control", placeholder="Enter list title") }}
+                            {% if list_form.title.errors %}
+                                <div class="text-danger">
+                                    {% for error in list_form.title.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="modal-footer">

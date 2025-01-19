@@ -777,6 +777,7 @@ class PlannerTask(db.Model):
     completed_at = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(20), default='todo')
     priority = db.Column(db.String(20), default='medium')
+    is_completed = db.Column(db.Boolean, default=False)
     
     list = db.relationship('PlannerList', back_populates='tasks')
     creator = db.relationship('User', foreign_keys=[creator_id], back_populates='planner_tasks_created', overlaps="task_creator")
@@ -786,11 +787,13 @@ class PlannerTask(db.Model):
         """Mark the task as complete."""
         self.status = 'done'
         self.completed_at = datetime.utcnow()
+        self.is_completed = True
     
     def mark_incomplete(self):
         """Mark the task as incomplete."""
         self.status = 'todo'
         self.completed_at = None
+        self.is_completed = False
 
 # User Loader for Flask-Login
 @login_manager.user_loader
@@ -2961,6 +2964,9 @@ def planner_board(board_id):
     board_lists = board.lists
     task_form.list_id.choices = [(lst.id, lst.title) for lst in board_lists]
     
+    # Add list form
+    list_form = ListForm()
+    
     # If there are lists, pre-select the first list
     if board_lists:
         task_form.list_id.data = board_lists[0].id
@@ -2986,6 +2992,7 @@ def planner_board(board_id):
         'planner/board.html', 
         board=board, 
         task_form=task_form, 
+        list_form=list_form, 
         invite_form=invite_form,
         delete_task_form=delete_task_form,
         delete_board_form=delete_board_form,
@@ -3054,7 +3061,9 @@ def create_task(board_id):
             creator_id=current_user.id,
             assigned_to_id=assigned_to_id,
             due_date=form.due_date.data,
-            status=form.status.data
+            status=form.status.data,
+            priority=form.priority.data,
+            is_completed=(form.status.data == 'done')
         )
         db.session.add(new_task)
         db.session.commit()
@@ -3185,6 +3194,7 @@ def edit_task(task_id):
         task.due_date = form.due_date.data
         task.status = form.status.data
         task.priority = form.priority.data
+        task.is_completed = (form.status.data == 'done')
         
         db.session.commit()
         flash('Task updated successfully!', 'success')
