@@ -1,0 +1,24 @@
+{
+    "max_concurrent_connections": 500,
+    "connection_rate_limit": 100,
+    "block_countries": [],
+    "whitelist_ips": [
+        "185.132.16.153",
+        "103.163.215.73",
+        "::1"
+    ],
+    "blacklist_ips": ["103.163.215.73"],
+    "malware_scan_interval": 3600,
+    "ddos_threshold": {
+        "syn_flood": 100,
+        "icmp_flood": 50,
+        "udp_flood": 75
+    },
+    "password_complexity": {
+        "min_length": 12,
+        "require_uppercase": true,
+        "require_lowercase": true,
+        "require_numbers": true,
+        "require_special_chars": true
+    }
+}

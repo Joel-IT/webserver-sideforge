@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="account-container">
+    <!-- Sidebar Navigation -->
+    <aside class="dashboard-sidebar">
+        <div class="dashboard-sidebar-logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="SideForge Logo">
+            <h2>Sideforge</h2>
+        </div>
+        <nav>
+            <ul class="account-sidebar-nav">
+                <li class="active"><a href="#profile"><i class="fas fa-user"></i> Profile</a></li>
+                <li><a href="#security"><i class="fas fa-lock"></i> Security</a></li>
+                <li><a href="#preferences"><i class="fas fa-cog"></i> Preferences</a></li>
+                <li><a href="#billing"><i class="fas fa-receipt"></i> Billing</a></li>
+                <li><a href="#danger-zone" class="text-danger"><i class="fas fa-exclamation-triangle"></i> Danger Zone</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="account-content">
+        <!-- Profile Section -->
+        <section id="profile" class="account-section active">
+            <h2>Profile Settings</h2>
+            <div class="profile-header">
+                <div class="profile-avatar-large">
+                    {% set initials = user.name.split()|map('first')|join('')|upper %}
+                    {{ initials }}
+                </div>
+                <div class="profile-info">
+                    <h3>{{ user.name }}</h3>
+                    <p>{{ user.email }}</p>
+                    <button class="btn btn-secondary" id="change-avatar-btn">Change Avatar</button>
+                </div>
+            </div>
+            
+            <form id="profile-form" class="account-form">
+                <div class="form-group">
+                    <label for="full-name">Full Name</label>
+                    <input type="text" id="full-name" name="full_name" value="{{ user.name }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" value="{{ user.email }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" value="{{ user.username }}" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </form>
+        </section>
+
+        <!-- Security Section -->
+        <section id="security" class="account-section">
+            <h2>Security Settings</h2>
+            <div class="security-options">
+                <div class="security-item">
+                    <h3>Change Password</h3>
+                    <form id="password-change-form">
+                        <div class="form-group">
+                            <label for="current-password">Current Password</label>
+                            <input type="password" id="current-password" name="current_password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="new-password">New Password</label>
+                            <input type="password" id="new-password" name="new_password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm-password">Confirm New Password</label>
+                            <input type="password" id="confirm-password" name="confirm_password" required>
+                        </div>
+                        <button type="submit" class="btn btn-warning">Update Password</button>
+                    </form>
+                </div>
+                <div class="security-item">
+                    <h3>Two-Factor Authentication</h3>
+                    <p>Add an extra layer of security to your account</p>
+                    <button class="btn btn-{{ 'success' if user.two_factor_enabled else 'secondary' }}" id="2fa-toggle">
+                        {{ 'Disable' if user.two_factor_enabled else 'Enable' }} 2FA
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Preferences Section -->
+        <section id="preferences" class="account-section">
+            <h2>Account Preferences</h2>
+            <form id="preferences-form">
+                <div class="form-group">
+                    <label>Theme</label>
+                    <div class="theme-selector">
+                        <label class="theme-option">
+                            <input type="radio" name="theme" value="light" 
+                                   {{ 'checked' if user.theme == 'light' else '' }}>
+                            <span>Light Mode</span>
+                        </label>
+                        <label class="theme-option">
+                            <input type="radio" name="theme" value="dark"
+                                   {{ 'checked' if user.theme == 'dark' else '' }}>
+                            <span>Dark Mode</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notification Preferences</label>
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" name="email_notifications" 
+                                   {{ 'checked' if user.email_notifications else '' }}>
+                            Receive email notifications
+                        </label>
+                        <label>
+                            <input type="checkbox" name="marketing_emails" 
+                                   {{ 'checked' if user.marketing_emails else '' }}>
+                            Receive marketing emails
+                        </label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Preferences</button>
+            </form>
+        </section>
+
+        <!-- Billing Section -->
+        <section id="billing" class="account-section">
+            <h2>Billing Information</h2>
+            <div class="billing-summary">
+                <div class="billing-card">
+                    <h3>Current Plan</h3>
+                    <p>{{ user.subscription.plan_name }}</p>
+                    <p>Next billing date: {{ user.subscription.next_billing_date }}</p>
+                    <a href="{{ url_for('pricing') }}" class="btn btn-secondary">Change Plan</a>
+                </div>
+                <div class="billing-card">
+                    <h3>Payment Methods</h3>
+                    {% if user.payment_methods %}
+                        {% for method in user.payment_methods %}
+                        <div class="payment-method">
+                            <i class="fab fa-{{ method.card_type }}"></i>
+                            **** **** **** {{ method.last_4 }}
+                            <button class="btn btn-sm btn-danger remove-payment-method" 
+                                    data-method-id="{{ method.id }}">Remove</button>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <p>No payment methods added</p>
+                    {% endif %}
+                    <button class="btn btn-primary add-payment-method">Add Payment Method</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Danger Zone -->
+        <section id="danger-zone" class="account-section">
+            <h2 class="text-danger">Danger Zone</h2>
+            <div class="danger-options">
+                <div class="danger-item">
+                    <h3>Delete Account</h3>
+                    <p>Permanently delete your account and all associated data</p>
+                    <button class="btn btn-danger" id="delete-account-btn">Delete Account</button>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/account.js') }}"></script>
+{% endblock %}

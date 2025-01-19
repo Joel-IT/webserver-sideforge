@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .pricing-container {
+        max-width: 1200px;
+        margin: 4rem auto;
+    }
+
+    .pricing-card {
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .pricing-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    }
+
+    .pricing-card.recommended {
+        border: 2px solid #6772e5;
+    }
+
+    .pricing-card .badge-recommended {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background-color: #6772e5;
+        color: white;
+    }
+
+    .pricing-features {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    .pricing-features li {
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .pricing-features li i {
+        margin-right: 0.5rem;
+        color: #28a745;
+    }
+
+    .btn-choose-plan {
+        background-color: #6772e5;
+        border-color: #6772e5;
+        transition: all 0.3s ease;
+    }
+
+    .btn-choose-plan:hover {
+        background-color: #5363c9;
+        border-color: #5363c9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container pricing-container">
+    <div class="text-center mb-5">
+        <h1>Choose Your Server Hosting Plan</h1>
+        <p class="text-muted">Find the perfect plan for your project's needs</p>
+    </div>
+
+    <div class="row">
+        {% for plan_key, plan in plans.items() %}
+        <div class="col-md-4 mb-4">
+            <div class="pricing-card position-relative {{ 'recommended' if plan.recommended else '' }}">
+                {% if plan.recommended %}
+                <span class="badge badge-recommended">Most Popular</span>
+                {% endif %}
+
+                <h3>{{ plan.name }} Plan</h3>
+                <p class="text-muted">{{ plan.description }}</p>
+
+                <div class="pricing-price mb-4">
+                    <h2 class="text-primary">${{ "%.2f"|format(plan.price) }}/month</h2>
+                </div>
+
+                <ul class="pricing-features">
+                    {% for feature in plan.features %}
+                    <li>
+                        <i class="bi bi-check-circle"></i>
+                        {{ feature }}
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <div class="mt-4">
+                    <a href="{{ url_for('checkout', plan=plan_key) }}" class="btn btn-primary btn-choose-plan w-100">
+                        Choose {{ plan.name }} Plan
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="text-center mt-5">
+        <h3>Need a Custom Solution?</h3>
+        <p class="text-muted">
+            Have unique requirements? Contact our sales team for a tailored hosting solution.
+        </p>
+        <a href="{{ url_for('contact') }}" class="btn btn-outline-primary">
+            Contact Sales
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Optional: Add interactivity to pricing cards
+        const pricingCards = document.querySelectorAll('.pricing-card');
+        pricingCards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.classList.add('shadow-lg');
+            });
+            card.addEventListener('mouseleave', () => {
+                card.classList.remove('shadow-lg');
+            });
+        });
+
+        // Log pricing page view
+        console.log('Pricing Page Viewed');
+    });
+</script>
+{% endblock %}

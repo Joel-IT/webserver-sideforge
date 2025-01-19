@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .contact-container {
+        max-width: 600px;
+        margin: 4rem auto;
+        padding: 2rem;
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+    .contact-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .form-control:focus {
+        border-color: #6772e5;
+        box-shadow: 0 0 0 0.2rem rgba(103, 114, 229, 0.25);
+    }
+
+    .btn-contact {
+        background-color: #6772e5;
+        border-color: #6772e5;
+        transition: all 0.3s ease;
+    }
+
+    .btn-contact:hover {
+        background-color: #5363c9;
+        border-color: #5363c9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="contact-container">
+        <div class="contact-header">
+            <h2>Contact Sideforge Sales</h2>
+            <p class="text-muted">Have questions? We're here to help!</p>
+        </div>
+
+        <form>
+            <div class="mb-3">
+                <label for="name" class="form-label">Full Name</label>
+                <input type="text" class="form-control" id="name" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="email" class="form-label">Email Address</label>
+                <input type="email" class="form-control" id="email" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="phone" class="form-label">Phone Number (Optional)</label>
+                <input type="tel" class="form-control" id="phone">
+            </div>
+
+            <div class="mb-3">
+                <label for="message" class="form-label">Your Message</label>
+                <textarea class="form-control" id="message" rows="4" required></textarea>
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-contact">Send Message</button>
+            </div>
+        </form>
+
+        <div class="text-center mt-4">
+            <p class="small text-muted">
+                Alternatively, reach us at 
+                <a href="mailto:sales@sideforge.com" class="text-primary">sales@sideforge.com</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.querySelector('form');
+        
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('Contact form submission is currently disabled. Please email sales@sideforge.com');
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Security Settings{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/security_settings.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="security-container">
+    <!-- Sidebar Navigation -->
+    <aside class="dashboard-sidebar">
+        <div class="dashboard-sidebar-logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="SideForge Logo">
+            <h2>Sideforge</h2>
+        </div>
+        <nav>
+            <ul class="security-sidebar-nav">
+                <li class="active"><a href="#two-factor"><i class="fas fa-lock"></i> Two-Factor Auth</a></li>
+                <li><a href="#active-sessions"><i class="fas fa-desktop"></i> Active Sessions</a></li>
+                <li><a href="#login-history"><i class="fas fa-history"></i> Login History</a></li>
+                <li><a href="#security-alerts"><i class="fas fa-bell"></i> Security Alerts</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="security-content">
+        <!-- Two-Factor Authentication Section -->
+        <section id="two-factor" class="security-section active">
+            <h2>Two-Factor Authentication</h2>
+            <div class="two-factor-container">
+                <div class="two-factor-status">
+                    <i class="fas {{ 'fa-check-circle text-success' if user.two_factor_enabled else 'fa-times-circle text-danger' }}"></i>
+                    <span>
+                        {{ 'Enabled' if user.two_factor_enabled else 'Disabled' }}
+                    </span>
+                </div>
+                <p>
+                    Two-factor authentication adds an extra layer of security to your account 
+                    by requiring a second form of verification when logging in.
+                </p>
+                <button id="toggle-2fa-btn" class="btn {{ 'btn-danger' if user.two_factor_enabled else 'btn-success' }}">
+                    {{ 'Disable' if user.two_factor_enabled else 'Enable' }} Two-Factor Auth
+                </button>
+            </div>
+        </section>
+
+        <!-- Active Sessions Section -->
+        <section id="active-sessions" class="security-section">
+            <h2>Active Sessions</h2>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>IP Address</th>
+                        <th>Last Activity</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in user.active_sessions %}
+                    <tr class="{{ 'table-primary' if session.is_current else '' }}">
+                        <td>{{ session.device }}</td>
+                        <td>{{ session.ip_address }}</td>
+                        <td>{{ session.last_activity.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>
+                            {% if not session.is_current %}
+                            <button class="btn btn-sm btn-danger revoke-session" 
+                                    data-session-id="{{ session.ip_address }}">
+                                Revoke Access
+                            </button>
+                            {% else %}
+                            <span class="badge bg-primary">Current Session</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Login History Section -->
+        <section id="login-history" class="security-section">
+            <h2>Recent Activity</h2>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Action</th>
+                        <th>Timestamp</th>
+                        <th>IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for activity in user.recent_activities %}
+                    <tr>
+                        <td>{{ activity.action }}</td>
+                        <td>{{ activity.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>{{ activity.ip_address }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Security Alerts Section -->
+        <section id="security-alerts" class="security-section">
+            <h2>Security Alerts</h2>
+            <div class="alert-container">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div>
+                        <h4>Last Login Attempt</h4>
+                        <p>
+                            {% if user.last_login %}
+                            Your last login was on {{ user.last_login.strftime('%Y-%m-%d %H:%M:%S') }}
+                            {% else %}
+                            No previous login information available
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                        <h4>Login Attempts</h4>
+                        <p>
+                            Total failed login attempts: {{ user.login_attempts or 0 }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/security_settings.js') }}"></script>
+{% endblock %}

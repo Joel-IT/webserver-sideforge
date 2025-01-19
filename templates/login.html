@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    body {
+        background-color: #f4f7ff;
+    }
+    .login-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 80px);  /* Subtract navbar height */
+        padding-top: 80px;  /* Match navbar height */
+    }
+    .login-container {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+        overflow: hidden;
+        max-width: 500px;
+        width: 100%;
+    }
+    .login-header {
+        background: linear-gradient(135deg, #4a6cf7, #7c3aed);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+    .login-body {
+        padding: 2.5rem;
+    }
+    .form-control {
+        border-radius: 50px;
+        padding: 12px 20px;
+        border: 1px solid #e0e0e0;
+    }
+    .form-control:focus {
+        border-color: #4a6cf7;
+        box-shadow: 0 0 0 0.2rem rgba(74,108,247,0.25);
+    }
+    .btn-primary {
+        background-color: #4a6cf7;
+        border-color: #4a6cf7;
+        border-radius: 50px;
+        padding: 12px 20px;
+        transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+        background-color: #3a54c7;
+        transform: translateY(-3px);
+    }
+    .login-footer {
+        text-align: center;
+        padding: 1rem;
+        background-color: #f8f9fa;
+    }
+</style>
+
+<div class="login-wrapper">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-4">
+                <div class="login-container">
+                    <div class="login-header">
+                        <h2 class="mb-0">Welcome Back</h2>
+                        <p class="text-white-50 mb-0">Login to your Sideforge account</p>
+                    </div>
+                    <div class="login-body">
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }} text-center">{{ message }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+                        <form method="POST" action="{{ url_for('login') }}">
+                            {{ form.hidden_tag() }}
+                            <div class="mb-4">
+                                {{ form.email.label(class="form-label") }}
+                                {{ form.email(class="form-control", placeholder="Enter your email") }}
+                                {% if form.email.errors %}
+                                    <div class="text-danger small mt-2">
+                                        {% for error in form.email.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="mb-4">
+                                {{ form.password.label(class="form-label") }}
+                                {{ form.password(class="form-control", placeholder="Enter password") }}
+                                {% if form.password.errors %}
+                                    <div class="text-danger small mt-2">
+                                        {% for error in form.password.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="text-center">
+                                {{ form.submit(class="btn btn-primary w-100") }}
+                            </div>
+                        </form>
+                    </div>
+                    <div class="login-footer">
+                        Don't have an account? <a href="{{ url_for('register') }}" class="text-primary">Register</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

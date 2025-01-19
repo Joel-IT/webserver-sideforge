@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block head %}
+{{ super() }}
+<style>
+    body {
+        background-color: #f4f7ff;
+    }
+    .success-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 80px);
+        padding-top: 80px;
+    }
+    .success-container {
+        max-width: 700px;
+        width: 100%;
+        background-color: white;
+        border-radius: 15px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .success-header {
+        background: linear-gradient(135deg, #4a6cf7, #7c3aed);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+    .success-body {
+        padding: 2.5rem;
+    }
+    .success-icon {
+        color: #28a745;
+        font-size: 4rem;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    .plan-details {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    .feature-list {
+        list-style-type: none;
+        padding: 0;
+    }
+    .feature-list li {
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+    .feature-list .bi-check {
+        color: #28a745;
+        margin-right: 0.5rem;
+    }
+    .btn-primary, .btn-outline-secondary {
+        border-radius: 50px;
+        padding: 12px 20px;
+        transition: all 0.3s ease;
+    }
+    .btn-primary {
+        background-color: #4a6cf7;
+        border-color: #4a6cf7;
+    }
+    .btn-primary:hover {
+        background-color: #3a54c7;
+        transform: translateY(-3px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="success-wrapper">
+    <div class="success-container">
+        <div class="success-header">
+            <h2 class="mb-0">Payment Successful!</h2>
+            <p class="text-white-50 mb-0">Your Sideforge server is ready</p>
+        </div>
+        <div class="success-body text-center">
+            <div class="success-icon">
+                <i class="bi bi-check-circle"></i>
+            </div>
+
+            <h1 class="mb-4">Welcome to Sideforge</h1>
+            <p class="lead text-muted mb-4">
+                Your server is now active and ready to use.
+            </p>
+
+            <div class="plan-details">
+                <h3 class="mb-3 text-primary">{{ plan.name }} Plan Details</h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h4 class="text-dark">${{ "%.2f"|format(plan.price) }}/month</h4>
+                        <p class="text-muted small">Billed monthly</p>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="feature-list text-start">
+                            {% for feature in plan.features %}
+                                <li>
+                                    <i class="bi bi-check"></i>
+                                    {{ feature }}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            {% if latest_payment %}
+            <div class="mt-4 text-muted small">
+                <strong>Payment Confirmation:</strong> {{ latest_payment.transaction_id }}
+            </div>
+            {% endif %}
+
+            <div class="mt-4">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary me-2">
+                    Go to Dashboard
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Optional: Add celebration animation or sound
+        console.log('Payment Success: Plan {{ plan.name }}');
+        
+        // Playful celebration effect
+        const confetti = () => {
+            const count = 200;
+            const defaults = {
+                origin: { y: 0.7 }
+            };
+
+            function fire(particleRatio, opts) {
+                confetti(Object.assign({}, defaults, opts, {
+                    particleCount: Math.floor(count * particleRatio)
+                }));
+            }
+
+            fire(0.25, {
+                spread: 26,
+                startVelocity: 55,
+            });
+            fire(0.2, {
+                spread: 60,
+            });
+            fire(0.35, {
+                spread: 100,
+                decay: 0.91,
+                scalar: 0.8
+            });
+            fire(0.1, {
+                spread: 120,
+                startVelocity: 25,
+                decay: 0.92,
+                scalar: 1.2
+            });
+            fire(0.1, {
+                spread: 120,
+                startVelocity: 45,
+            });
+        };
+
+        // Only run if confetti library is available
+        if (window.confetti) {
+            confetti();
+        }
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+{% endblock %}

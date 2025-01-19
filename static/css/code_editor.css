@@ -1,0 +1,154 @@
+body {
+    background-color: #1e1e1e;
+    color: #ffffff;
+}
+
+.code-editor-page {
+    height: 100vh;
+    display: flex;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.sidebar-files {
+    background-color: #252526;
+    color: #ffffff;
+    border-right: 1px solid #3c3c3c;
+    padding: 15px;
+    width: 250px;
+    overflow-y: auto;
+    transition: width 0.3s ease;
+}
+
+.file-management h3 {
+    color: #61dafb;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #61dafb;
+    padding-bottom: 10px;
+}
+
+.file-list {
+    max-height: 60vh;
+    overflow-y: auto;
+    margin-top: 15px;
+    list-style-type: none;
+    padding: 0;
+}
+
+.file-list .file-item {
+    background-color: #2d2d2d;
+    color: #d4d4d4;
+    border: 1px solid #3c3c3c;
+    margin-bottom: 5px;
+    padding: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.file-list .file-item:hover {
+    background-color: #3c3c3c;
+}
+
+.file-list .file-item.active {
+    background-color: #61dafb;
+    color: #000;
+    font-weight: bold;
+}
+
+.editor-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background-color: #1e1e1e;
+    padding: 20px;
+}
+
+.editor-header {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+#current-filename, #language-select {
+    background-color: #252526;
+    color: #d4d4d4;
+    border: 1px solid #3c3c3c;
+}
+
+#code-editor {
+    flex-grow: 1;
+    border: 1px solid #3c3c3c;
+    border-radius: 5px;
+    width: 100%;
+    height: calc(100vh - 200px);
+}
+
+.editor-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+#new-file-form {
+    background-color: #252526;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    margin-top: 15px;
+}
+
+#new-file-form input, 
+#new-file-form select {
+    background-color: #3c3c3c;
+    color: #d4d4d4;
+    border: 1px solid #4c4c4c;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: #ffffff;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: #ffffff;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: #ffffff;
+}
+
+/* Scrollbar styling */
+.file-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.file-list::-webkit-scrollbar-track {
+    background: #252526;
+}
+
+.file-list::-webkit-scrollbar-thumb {
+    background: #61dafb;
+    border-radius: 4px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .code-editor-page {
+        flex-direction: column;
+    }
+
+    .sidebar-files {
+        width: 100%;
+        max-height: 30vh;
+    }
+
+    .editor-container {
+        flex-grow: 1;
+    }
+}

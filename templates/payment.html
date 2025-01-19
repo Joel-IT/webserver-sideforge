@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block head %}
+{{ super() }}
+<!-- Load Stripe.js -->
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+    /* Comprehensive Stripe Elements Styling */
+    .StripeElement {
+        width: 100%;
+        height: 44px;
+        padding: 10px 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background-color: white;
+        box-shadow: 0 1px 3px 0 #e6ebf1;
+        transition: box-shadow 150ms ease;
+    }
+
+    .StripeElement--focus {
+        outline: none;
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+
+    .StripeElement--invalid {
+        border-color: #dc3545;
+    }
+
+    #card-errors {
+        color: #dc3545;
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="text-center mb-0">Complete Your Payment</h2>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h4>{{ plan_name }} Plan</h4>
+                        <p class="text-muted">
+                            Total Amount: ${{ "%.2f"|format(plan_price) }}
+                        </p>
+                    </div>
+
+                    <form id="payment-form">
+                        <div class="mb-3">
+                            <label for="card-holder-name" class="form-label">Cardholder Name</label>
+                            <input 
+                                id="card-holder-name" 
+                                type="text" 
+                                class="form-control" 
+                                placeholder="Full Name" 
+                                required
+                            >
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="card-element" class="form-label">Card Details</label>
+                            <div id="card-element" class="form-control">
+                                <!-- Stripe Elements Placeholder -->
+                            </div>
+                            <div id="card-errors" role="alert"></div>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input 
+                                class="form-check-input" 
+                                type="checkbox" 
+                                id="save-card" 
+                                name="save_card"
+                            >
+                            <label class="form-check-label" for="save-card">
+                                Save this card for future payments
+                            </label>
+                        </div>
+
+                        <button 
+                            id="card-button" 
+                            type="submit" 
+                            class="btn btn-primary w-100"
+                        >
+                            Pay ${{ "%.2f"|format(plan_price) }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Enhanced debugging function
+function logStripeConfig() {
+    console.group('Stripe Configuration Debug');
+    console.log('Stripe Publishable Key:', '{{ stripe_publishable_key }}');
+    console.log('Plan Details:', {
+        name: '{{ plan_name }}',
+        price: {{ plan_price }},
+        key: '{{ plan_key }}'
+    });
+    console.groupEnd();
+}
+
+// Comprehensive Stripe Elements Initialization
+function initStripeElements() {
+    // Validate Stripe key
+    const stripeKey = '{{ stripe_publishable_key }}';
+    
+    // Extensive key validation
+    if (!stripeKey) {
+        console.error('❌ CRITICAL: Stripe Publishable Key is MISSING!');
+        throw new Error('Stripe Publishable Key is not configured');
+    }
+
+    // Check if Stripe is loaded
+    if (typeof Stripe === 'undefined') {
+        console.error('❌ CRITICAL: Stripe.js is not loaded!');
+        throw new Error('Stripe.js library failed to load');
+    }
+
+    try {
+        // Initialize Stripe with extensive error handling
+        const stripe = Stripe(stripeKey);
+        
+        // Validate Stripe initialization
+        if (!stripe) {
+            console.error('❌ CRITICAL: Failed to initialize Stripe');
+            throw new Error('Stripe initialization failed');
+        }
+
+        const elements = stripe.elements({
+            mode: 'payment',
+            currency: 'usd',
+            amount: {{ (plan_price * 100)|int }}, // Amount in cents
+        });
+
+        // Create card Element with comprehensive styling
+        const cardElement = elements.create('card', {
+            style: {
+                base: {
+                    color: "#32325D",
+                    fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+                    fontSmoothing: "antialiased",
+                    fontSize: "16px",
+                    "::placeholder": {
+                        color: "#CFD7DF"
+                    }
+                },
+                invalid: {
+                    color: "#E25950"
+                }
+            },
+            classes: {
+                focus: 'focused',
+                invalid: 'is-invalid'
+            }
+        });
+
+        // Mount card Element
+        cardElement.mount('#card-element');
+
+        console.log('✅ Stripe Elements successfully initialized');
+        return { stripe, elements, cardElement };
+    } catch (error) {
+        console.error('❌ Stripe Elements Initialization Error:', error);
+        throw error;
+    }
+}
+
+// Ensure DOM is fully loaded before initializing
+document.addEventListener('DOMContentLoaded', function() {
+    // Log configuration for debugging
+    logStripeConfig();
+
+    // Wrap initialization in a try-catch with more detailed error handling
+    try {
+        const { stripe, elements, cardElement } = initStripeElements();
+
+        // Handle real-time validation errors
+        cardElement.addEventListener('change', function(event) {
+            const displayError = document.getElementById('card-errors');
+            if (event.error) {
+                displayError.textContent = event.error.message;
+                displayError.style.display = 'block';
+                console.warn('❗ Card Validation Error:', event.error.message);
+            } else {
+                displayError.textContent = '';
+                displayError.style.display = 'none';
+            }
+        });
+
+        // Form submission handler
+        const form = document.getElementById('payment-form');
+        const cardHolderName = document.getElementById('card-holder-name');
+        const cardButton = document.getElementById('card-button');
+        const saveCardCheckbox = document.getElementById('save-card');
+        const cardErrors = document.getElementById('card-errors');
+
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            // Validate inputs
+            if (!cardHolderName.value.trim()) {
+                cardErrors.textContent = 'Please enter cardholder name';
+                cardErrors.style.display = 'block';
+                return;
+            }
+
+            // Disable submit button
+            cardButton.disabled = true;
+            cardButton.textContent = 'Processing...';
+
+            try {
+                // Create PaymentMethod
+                const { paymentMethod, error } = await stripe.createPaymentMethod({
+                    type: 'card',
+                    card: cardElement,
+                    billing_details: {
+                        name: cardHolderName.value.trim()
+                    }
+                });
+
+                if (error) {
+                    throw error;
+                }
+
+                // Prepare payment data
+                const paymentData = {
+                    payment_method_id: paymentMethod.id,
+                    save_card: saveCardCheckbox.checked,
+                    plan: '{{ plan_key }}'
+                };
+
+                // Send to server
+                const response = await fetch('/process-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        {% if csrf_token %}
+                        'X-CSRFToken': '{{ csrf_token }}'
+                        {% endif %}
+                    },
+                    body: JSON.stringify(paymentData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Redirect to success page
+                    window.location.href = result.redirect_url;
+                } else if (result.requires_action) {
+                    // Handle 3D Secure or other authentication
+                    const { error } = await stripe.confirmPayment({
+                        payment_intent_client_secret: result.payment_intent_client_secret,
+                        elements,
+                        redirect: 'if_required'
+                    });
+
+                    if (error) {
+                        // Show error to your customer
+                        cardErrors.textContent = error.message;
+                        cardErrors.style.display = 'block';
+                    } else {
+                        // Payment succeeded
+                        window.location.href = '/payment/success/{{ plan_key }}';
+                    }
+                } else {
+                    // Handle other error scenarios
+                    throw new Error(result.error || 'Payment failed');
+                }
+            } catch (error) {
+                console.error('❌ Payment Error:', error);
+                cardErrors.textContent = error.message || 'An unexpected error occurred';
+                cardErrors.style.display = 'block';
+            } finally {
+                // Re-enable submit button
+                cardButton.disabled = false;
+                cardButton.textContent = 'Pay Now';
+            }
+        });
+    } catch (error) {
+        console.error('❌ FATAL: Payment System Initialization Failed', error);
+        alert(`Payment system initialization failed: ${error.message}. Please refresh the page or contact support.`);
+    }
+});
+</script>
+{% endblock %}

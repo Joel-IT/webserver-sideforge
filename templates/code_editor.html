@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Code Editor{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/code_editor.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid code-editor-container">
+    <div class="row">
+        <!-- Sidebar for File Management -->
+        <div class="col-md-3 sidebar">
+            <div class="nav nav-tabs" id="file-tabs" role="tablist">
+                <a class="nav-item nav-link active" id="cloud-files-tab" data-toggle="tab" href="#cloud-files" role="tab">
+                    Cloud Files
+                </a>
+                <a class="nav-item nav-link" id="local-files-tab" data-toggle="tab" href="#local-files" role="tab">
+                    Local Files
+                </a>
+            </div>
+
+            <div class="tab-content" id="file-tabs-content">
+                <!-- Cloud Files Tab -->
+                <div class="tab-pane fade show active" id="cloud-files" role="tabpanel">
+                    <div class="sidebar-header">
+                        <h4>Cloud Files</h4>
+                        <button id="upload-cloud-file-btn" class="btn btn-sm btn-primary">
+                            <i class="fas fa-cloud-upload-alt"></i> Upload
+                        </button>
+                    </div>
+                    <ul id="cloud-file-list" class="list-group">
+                        {% if cloud_files %}
+                            {% for file in cloud_files %}
+                            <li class="list-group-item list-group-item-action" data-filename="{{ file.file_name }}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    {{ file.file_name }}
+                                    <span class="badge badge-primary badge-pill">
+                                        {{ (file.file_size / 1024)|round(1) }} KB
+                                    </span>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="list-group-item text-muted">No cloud files found</li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <!-- Local Files Tab -->
+                <div class="tab-pane fade" id="local-files" role="tabpanel">
+                    <div class="sidebar-header">
+                        <h4>Local Code Files</h4>
+                        <button id="new-file-btn" class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus"></i> New
+                        </button>
+                    </div>
+                    <ul id="local-file-list" class="list-group">
+                        {% if local_code_files %}
+                            {% for file in local_code_files %}
+                            <li class="list-group-item list-group-item-action" data-filename="{{ file.name }}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    {{ file.name }}
+                                    <span class="badge badge-primary badge-pill">
+                                        {{ (file.size / 1024)|round(1) }} KB
+                                    </span>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="list-group-item text-muted">No local code files found</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- New File Form (Hidden by default) -->
+            <div id="new-file-form" class="new-file-form" style="display: none;">
+                <div class="form-group">
+                    <label for="new-file-name">File Name</label>
+                    <input type="text" class="form-control" id="new-file-name" placeholder="Enter filename">
+                </div>
+                <div class="form-group">
+                    <label for="new-file-language">Language</label>
+                    <select class="form-control" id="new-file-language">
+                        <option value="text">Plain Text</option>
+                        <option value="python">Python</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="markdown">Markdown</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button id="create-file-btn" class="btn btn-success">Create</button>
+                    <button id="cancel-new-file-btn" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Editor Area -->
+        <div class="col-md-9 editor-area">
+            <!-- Editor Controls -->
+            <div class="editor-controls row">
+                <div class="col-md-6">
+                    <input type="text" id="filename-input" class="form-control" placeholder="Filename" readonly>
+                </div>
+                <div class="col-md-3">
+                    <select id="language-select" class="form-control">
+                        <option value="text">Plain Text</option>
+                        <option value="python">Python</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="markdown">Markdown</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="btn-group" role="group">
+                        <button id="save-button" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                        <button id="delete-file-button" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ace Editor Container -->
+            <div id="code-editor"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+<script src="{{ url_for('static', filename='js/code_editor.js') }}"></script>
+{% endblock %}

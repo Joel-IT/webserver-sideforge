@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="fas fa-credit-card me-2"></i>Saved Payment Methods
+                    </h2>
+                </div>
+                <div class="card-body">
+                    {% if payment_methods %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Card Type</th>
+                                        <th>Last 4 Digits</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for method in payment_methods %}
+                                    <tr>
+                                        <td>
+                                            <i class="fab fa-{{ method.card.brand|lower }} me-2"></i>
+                                            {{ method.card.brand|upper }}
+                                        </td>
+                                        <td>**** **** **** {{ method.card.last4 }}</td>
+                                        <td>
+                                            <form 
+                                                action="{{ url_for('set_default_payment_method', payment_method_id=method.id) }}" 
+                                                method="POST" 
+                                                class="d-inline"
+                                            >
+                                                <button 
+                                                    type="submit" 
+                                                    class="btn btn-sm btn-outline-primary me-2"
+                                                >
+                                                    Set as Default
+                                                </button>
+                                            </form>
+                                            <form 
+                                                action="{{ url_for('delete_payment_method', payment_method_id=method.id) }}" 
+                                                method="POST" 
+                                                class="d-inline"
+                                                onsubmit="return confirm('Are you sure you want to remove this payment method?');"
+                                            >
+                                                <button 
+                                                    type="submit" 
+                                                    class="btn btn-sm btn-outline-danger"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info text-center">
+                            <p>No saved payment methods found.</p>
+                            <p>Add a payment method during your next purchase.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Optional: Add any client-side validation or interactivity
+        console.log('Payment Methods Page Loaded');
+    });
+</script>
+{% endblock %}

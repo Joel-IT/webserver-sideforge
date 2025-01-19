@@ -1,0 +1,11 @@
+{
+    "max_login_attempts": 5,
+    "login_attempt_timeout": 900,
+    "allowed_ips": [],
+    "blocked_ips": [],
+    "security_headers": {
+        "X-Frame-Options": "DENY",
+        "X-XSS-Protection": "1; mode=block",
+        "Content-Security-Policy": "default-src 'self'"
+    }
+}

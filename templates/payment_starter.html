@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="text-center mb-0">{{ plan.name }} Plan Confirmation</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Plan Details</h4>
+                            <ul class="list-unstyled">
+                                {% for feature in plan.features %}
+                                    <li>
+                                        <i class="bi bi-check-circle text-success me-2"></i>
+                                        {{ feature }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <h3 class="text-primary">${{ "%.2f"|format(plan.price) }}/month</h3>
+                            <p class="text-muted">Billed monthly</p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="text-center">
+                        <p class="lead">Ready to get started with your {{ plan.name }} plan?</p>
+                        <a href="{{ url_for('payment_page', plan=plan.key) }}" class="btn btn-primary btn-lg">
+                            Proceed to Payment
+                            <i class="bi bi-arrow-right ms-2"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .card {
+        border: none;
+        border-radius: 10px;
+    }
+    .card-header {
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+    }
+</style>
+{% endblock %}

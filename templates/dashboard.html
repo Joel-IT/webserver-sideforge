@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<style>
+.dashboard-container {
+    background-color: #f8f9fc;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.dashboard-title {
+    flex-grow: 1;
+}
+
+.dashboard-user-menu {
+    margin-left: 2rem;
+}
+
+.user-profile-dropdown {
+    position: relative;
+}
+
+.user-profile-image {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    padding: 1rem;
+    display: none;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fc;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-gap: 2rem;
+}
+
+.dashboard-card {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+.dashboard-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.cloud-storage-content {
+    padding: 1rem;
+}
+
+.storage-progress {
+    width: 100%;
+    height: 5px;
+    background-color: #ddd;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.storage-progress-bar {
+    height: 100%;
+    background-color: #4e73df;
+}
+
+.storage-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.storage-stats {
+    flex-grow: 1;
+}
+
+.storage-actions {
+    margin-left: 2rem;
+}
+
+.recent-files-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.recent-files-table th, .recent-files-table td {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    text-align: left;
+}
+
+.recent-files-table th {
+    background-color: #f8f9fc;
+}
+
+.file-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-view {
+    background-color: #4e73df;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.btn-view:hover {
+    background-color: #224abe;
+}
+
+.btn-delete {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.btn-delete:hover {
+    background-color: #bd2130;
+}
+
+.quick-actions-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+}
+
+.quick-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.quick-action-btn {
+    background-color: #4e73df;
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    margin: 1rem;
+}
+
+.quick-action-btn:hover {
+    background-color: #224abe;
+}
+
+.quick-action-btn i {
+    margin-right: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <div class="dashboard-title">
+            <h1>Dashboard</h1>
+        </div>
+        <div class="dashboard-user-menu">
+            <div class="user-profile-dropdown">
+                <img src="{{ current_user.get_profile_picture(size=50) }}" 
+                     alt="Profile" 
+                     class="user-profile-image dropdown-toggle" 
+                     id="userProfileDropdown" 
+                     data-toggle="dropdown" 
+                     aria-haspopup="true" 
+                     aria-expanded="false">
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userProfileDropdown">
+                    <a class="dropdown-item" href="{{ url_for('account') }}">
+                        <i class="fas fa-user mr-2"></i>Account Settings
+                    </a>
+                    <a class="dropdown-item" href="{{ url_for('security_settings') }}">
+                        <i class="fas fa-shield-alt mr-2"></i>Security
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="{{ url_for('logout') }}">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Cloud Storage Card -->
+        <div class="dashboard-card cloud-storage-card">
+            <div class="dashboard-card-header">
+                <h3>Cloud Storage</h3>
+                <a href="{{ url_for('cloud_storage') }}" class="btn btn-sm">Manage</a>
+            </div>
+            <div class="dashboard-card-body">
+                <div class="cloud-storage-content">
+                    <div class="storage-progress">
+                        <div class="storage-progress-bar" style="width: {{ storage_usage_percent }}%"></div>
+                    </div>
+                    <div class="storage-details">
+                        <div class="storage-stats">
+                            <h4>{{ storage_usage_percent }}%</h4>
+                            <p>Storage Used</p>
+                        </div>
+                        <div class="storage-actions">
+                            <a href="{{ url_for('upload_file') }}" class="btn btn-primary">
+                                <i class="fas fa-cloud-upload-alt mr-2"></i>Upload File
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Files Card -->
+        <div class="dashboard-card recent-files-card">
+            <div class="dashboard-card-header">
+                <h3>Recent Files</h3>
+                <a href="{{ url_for('cloud_storage') }}" class="btn btn-sm">View All</a>
+            </div>
+            <div class="dashboard-card-body">
+                <table class="recent-files-table">
+                    <thead>
+                        <tr>
+                            <th>Filename</th>
+                            <th>Size</th>
+                            <th>Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for file in recent_cloud_files %}
+                        <tr>
+                            <td>{{ file.file_name }}</td>
+                            <td>{{ file.file_size }}</td>
+                            <td>{{ file.file_type }}</td>
+                            <td>
+                                <div class="file-actions">
+                                    <a href="#" onclick="viewFileDetails('{{ file.id }}')" class="btn-view">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="#" onclick="deleteFile('{{ file.id }}')" class="btn-delete">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Quick Actions Card -->
+        <div class="dashboard-card quick-actions-card">
+            <div class="dashboard-card-header">
+                <h3>Quick Actions</h3>
+            </div>
+            <div class="dashboard-card-body">
+                <div class="quick-action-buttons">
+                    <a href="{{ url_for('code_editor') }}" class="quick-action-btn">
+                        <i class="fas fa-code"></i>
+                        <span>Code Editor</span>
+                    </a>
+                    <a href="{{ url_for('server_instances') }}" class="quick-action-btn">
+                        <i class="fas fa-server"></i>
+                        <span>Server Instances</span>
+                    </a>
+                    <a href="{{ url_for('billing') }}" class="quick-action-btn">
+                        <i class="fas fa-dollar-sign"></i>
+                        <span>Billing</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+function viewFileDetails(fileId) {
+    console.log('Viewing file details for file ID:', fileId);
+    // Implement file details view logic
+}
+
+function deleteFile(fileId) {
+    console.log('Deleting file with ID:', fileId);
+    // Implement file deletion logic
+}
+</script>
+{% endblock %}

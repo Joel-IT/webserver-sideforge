@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .error-container {
+        max-width: 600px;
+        margin: 4rem auto;
+        padding: 2rem;
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+    .error-icon {
+        color: #dc3545;
+        font-size: 4rem;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    .error-details {
+        background-color: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-top: 1.5rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        max-height: 200px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="error-container text-center">
+        <div class="error-icon">
+            <i class="bi bi-exclamation-triangle"></i>
+        </div>
+
+        <h1 class="mb-4">Oops! Something Went Wrong</h1>
+        <p class="lead text-muted mb-4">
+            {{ error or 'An unexpected error occurred' }}
+        </p>
+
+        {% if details %}
+        <div class="error-details text-start">
+            <h4 class="text-danger mb-3">Error Details</h4>
+            <pre class="text-muted small">{{ details }}</pre>
+        </div>
+        {% endif %}
+
+        <div class="mt-4">
+            <a href="{{ url_for('index') }}" class="btn btn-primary me-2">
+                Return to Home
+            </a>
+            <a href="#" onclick="window.location.reload();" class="btn btn-outline-secondary">
+                Retry
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Log error details for debugging
+    document.addEventListener('DOMContentLoaded', () => {
+        console.error('Page Error:', {{ error | tojson }});
+        {% if details %}
+        console.error('Error Details:', {{ details | tojson }});
+        {% endif %}
+    });
+</script>
+{% endblock %}
