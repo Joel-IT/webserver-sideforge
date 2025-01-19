@@ -20,6 +20,45 @@
     
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     
+    <style>
+        /* Task Styling */
+        .task-item {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        .task-item:hover {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-color: #007bff;
+        }
+        .task-completed {
+            opacity: 0.6;
+            text-decoration: line-through;
+            background-color: #e9ecef;
+        }
+        .task-header {
+            margin-bottom: 5px;
+        }
+        .task-title {
+            margin: 0;
+            font-weight: 600;
+        }
+        .task-actions .btn {
+            margin-left: 5px;
+        }
+        .task-description {
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        .task-meta {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+    </style>
+    
     {% block head %}
         <!-- Ensure Stripe.js is loaded early -->
         <script src="https://js.stripe.com/v3/" async defer onerror="stripeLoadError()"></script>
