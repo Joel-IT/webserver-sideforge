@@ -774,6 +774,9 @@ class PlannerTask(db.Model):
     assigned_to_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     due_date = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    is_completed = db.Column(db.Boolean, default=False)
+    priority = db.Column(db.String(20), default='medium')  # low, medium, high
     status = db.Column(db.String(20), default='todo')
     
     list = db.relationship('PlannerList', back_populates='tasks')
@@ -841,6 +844,11 @@ class TaskForm(FlaskForm):
     list_id = SelectField('List', coerce=int, validators=[DataRequired()])
     assigned_to = SelectField('Assign To', coerce=int, validators=[])
     due_date = DateField('Due Date', format='%Y-%m-%d', validators=[])
+    priority = SelectField('Priority', choices=[
+        ('low', 'Low'), 
+        ('medium', 'Medium'), 
+        ('high', 'High')
+    ], validators=[DataRequired()])
     status = SelectField('Status', choices=[
         ('todo', 'To Do'), 
         ('in_progress', 'In Progress'), 
@@ -2922,9 +2930,10 @@ def planner_board(board_id):
     board = PlannerBoard.query.get_or_404(board_id)
     
     # Check if user is a board member or owner
-    is_member = BoardMember.query.filter_by(
-        board_id=board_id, 
-        user_id=current_user.id
+    is_member = BoardMember.query.filter(
+        BoardMember.board_id == board_id, 
+        BoardMember.user_id == current_user.id, 
+        BoardMember.role.in_(['editor', 'admin'])
     ).first()
     
     if not is_member and not board.is_public and board.owner_id != current_user.id:
@@ -2951,10 +2960,10 @@ def create_list(board_id):
     board = PlannerBoard.query.get_or_404(board_id)
     
     # Check permissions
-    is_member = BoardMember.query.filter_by(
-        board_id=board_id, 
-        user_id=current_user.id, 
-        role__in=['editor', 'admin']
+    is_member = BoardMember.query.filter(
+        BoardMember.board_id == board_id, 
+        BoardMember.user_id == current_user.id, 
+        BoardMember.role.in_(['editor', 'admin'])
     ).first()
     
     if not is_member and board.owner_id != current_user.id:
@@ -2980,10 +2989,10 @@ def create_task(board_id):
     board = PlannerBoard.query.get_or_404(board_id)
     
     # Check permissions
-    is_member = BoardMember.query.filter_by(
-        board_id=board_id, 
-        user_id=current_user.id, 
-        role__in=['editor', 'admin']
+    is_member = BoardMember.query.filter(
+        BoardMember.board_id == board_id, 
+        BoardMember.user_id == current_user.id, 
+        BoardMember.role.in_(['editor', 'admin'])
     ).first()
     
     if not is_member and board.owner_id != current_user.id:
@@ -3077,6 +3086,69 @@ def invite_to_board(board_id):
 def send_board_invitation_email(recipient_email, board_title, inviter_name):
     # Implement email sending logic
     pass
+
+@app.route('/planner/task/<int:task_id>/update', methods=['POST'])
+@login_required
+def update_task(task_id):
+    task = PlannerTask.query.get_or_404(task_id)
+    board = task.list.board
+    
+    # Check permissions
+    is_member = BoardMember.query.filter(
+        BoardMember.board_id == board.id, 
+        BoardMember.user_id == current_user.id, 
+        BoardMember.role.in_(['editor', 'admin'])
+    ).first()
+    
+    if not is_member and board.owner_id != current_user.id:
+        flash('You do not have permission to update tasks.', 'danger')
+        return redirect(url_for('planner_board', board_id=board.id))
+    
+    form = TaskForm()
+    form.list_id.choices = [(lst.id, lst.title) for lst in board.lists]
+    board_members = [bm.user for bm in board.board_members]
+    form.assigned_to.choices = [(0, 'Unassigned')] + [(user.id, user.name) for user in board_members]
+    
+    if form.validate_on_submit():
+        task.title = form.title.data
+        task.description = form.description.data
+        task.list_id = form.list_id.data
+        task.assigned_to_id = form.assigned_to.data if form.assigned_to.data != 0 else None
+        task.due_date = form.due_date.data
+        task.priority = form.priority.data
+        task.status = form.status.data
+        
+        db.session.commit()
+        flash('Task updated successfully!', 'success')
+        return redirect(url_for('planner_board', board_id=board.id))
+    
+    flash('Error updating task. Please check the form.', 'danger')
+    return redirect(url_for('planner_board', board_id=board.id))
+
+@app.route('/planner/task/<int:task_id>/complete', methods=['POST'])
+@login_required
+def complete_task(task_id):
+    task = PlannerTask.query.get_or_404(task_id)
+    board = task.list.board
+    
+    # Check permissions
+    is_member = BoardMember.query.filter(
+        BoardMember.board_id == board.id, 
+        BoardMember.user_id == current_user.id, 
+        BoardMember.role.in_(['editor', 'admin'])
+    ).first()
+    
+    if not is_member and board.owner_id != current_user.id:
+        flash('You do not have permission to complete tasks.', 'danger')
+        return redirect(url_for('planner_board', board_id=board.id))
+    
+    task.is_completed = not task.is_completed
+    task.completed_at = datetime.utcnow() if task.is_completed else None
+    task.status = 'done' if task.is_completed else 'todo'
+    
+    db.session.commit()
+    flash('Task status updated successfully!', 'success')
+    return redirect(url_for('planner_board', board_id=board.id))
 
 # Add these to your database initialization or migration script
 if __name__ == '__main__':
