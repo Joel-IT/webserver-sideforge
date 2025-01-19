@@ -225,11 +225,10 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 {% if delete_board_form %}
-                <form method="POST" action="{{ url_for('delete_board') }}">
+                <form method="POST" action="{{ url_for('delete_board', board_id=board.id) }}">
                     {{ delete_board_form.hidden_tag() }}
                     <div class="modal-body">
                         <p>Are you sure you want to delete this board?</p>
-                        <input type="hidden" name="board_id" value="{{ board.id }}">
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -250,7 +249,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 {% if update_board_form %}
-                <form method="POST" action="{{ url_for('update_board') }}">
+                <form method="POST" action="{{ url_for('update_board', board_id=board.id) }}">
                     {{ update_board_form.hidden_tag() }}
                     <div class="modal-body">
                         <div class="mb-3">
@@ -267,7 +266,6 @@
                                 {{ update_board_form.is_public.label(class="form-check-label") }}
                             </div>
                         </div>
-                        <input type="hidden" name="board_id" value="{{ board.id }}">
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

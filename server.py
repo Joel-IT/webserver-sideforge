@@ -3542,6 +3542,38 @@ def update_board():
     if form.validate_on_submit():
         board.title = form.title.data
         board.description = form.description.data
+        
+        db.session.commit()
+        flash('Board updated successfully!', 'success')
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"{getattr(form, field).label.text}: {error}", 'danger')
+    
+    return redirect(url_for('planner_board', board_id=board_id))
+
+@app.route('/planner/board/<int:board_id>/update', methods=['POST'])
+@login_required
+def update_board(board_id):
+    board = PlannerBoard.query.get_or_404(board_id)
+    
+    # Check if current user is the owner or an admin
+    if board.owner_id != current_user.id:
+        is_admin = BoardMember.query.filter(
+            BoardMember.board_id == board_id, 
+            BoardMember.user_id == current_user.id, 
+            BoardMember.role == 'admin'
+        ).first()
+        
+        if not is_admin:
+            flash('You do not have permission to modify board settings.', 'danger')
+            return redirect(url_for('planner_board', board_id=board_id))
+    
+    form = BoardForm()
+    
+    if form.validate_on_submit():
+        board.title = form.title.data
+        board.description = form.description.data
         board.is_public = form.is_public.data
         
         db.session.commit()
